@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
-import vocabularyData from "./data/vocabularyData";
+import vocabularyData, {
+  VocabularyItem,
+  VerbConjugations,
+} from "./data/vocabularyData";
 
-const allCategories = [
+const allCategories: string[] = [
   ...new Set(vocabularyData.flatMap((item) => item.categories)),
 ];
 
-const pronouns = {
+const pronouns: Record<string, string> = {
   I: "أنا",
   he: "هو",
   she: "هي",
@@ -16,7 +19,15 @@ const pronouns = {
   "you (f)": "أنتِ",
 };
 
-const ConjugationTable = ({ conjugations, tense }) => (
+interface ConjugationTableProps {
+  conjugations: VerbConjugations;
+  tense: "present" | "past";
+}
+
+const ConjugationTable: React.FC<ConjugationTableProps> = ({
+  conjugations,
+  tense,
+}) => (
   <table className="w-full text-sm">
     <tbody>
       {Object.entries(conjugations[tense]).map(([person, conj], index) => (
@@ -43,8 +54,18 @@ const ConjugationTable = ({ conjugations, tense }) => (
   </table>
 );
 
-const VocabularyCard = ({ item, onStarToggle, isStarred }) => {
-  const [activeTab, setActiveTab] = useState("present");
+interface VocabularyCardProps {
+  item: VocabularyItem;
+  onStarToggle: (id: number) => void;
+  isStarred: boolean;
+}
+
+const VocabularyCard: React.FC<VocabularyCardProps> = ({
+  item,
+  onStarToggle,
+  isStarred,
+}) => {
+  const [activeTab, setActiveTab] = useState<"present" | "past">("present");
 
   const handleReportIssue = () => {
     const subject = encodeURIComponent(`Issue Report: ${item.arabic}`);
@@ -170,11 +191,11 @@ const VocabularyCard = ({ item, onStarToggle, isStarred }) => {
   );
 };
 
-const ArabicVocabularyDashboard = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [starredItems, setStarredItems] = useState([]);
-  const [showStarredOnly, setShowStarredOnly] = useState(false);
+const ArabicVocabularyDashboard: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [starredItems, setStarredItems] = useState<number[]>([]);
+  const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
 
   const filteredVocabulary = useMemo(() => {
     return vocabularyData.filter(
@@ -189,7 +210,7 @@ const ArabicVocabularyDashboard = () => {
     );
   }, [searchTerm, selectedCategory, starredItems, showStarredOnly]);
 
-  const handleStarToggle = (itemId) => {
+  const handleStarToggle = (itemId: number) => {
     setStarredItems((prev) =>
       prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
@@ -222,7 +243,7 @@ const ArabicVocabularyDashboard = () => {
             className="pl-10 pr-4 py-2 border rounded-md appearance-none bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
           >
             <option value="">All Categories</option>
-            {allCategories.sort().map((category) => (
+            {allCategories.map((category) => (
               <option key={category} value={category}>
                 {category}
               </option>
@@ -258,3 +279,4 @@ const ArabicVocabularyDashboard = () => {
 };
 
 export default ArabicVocabularyDashboard;
+
