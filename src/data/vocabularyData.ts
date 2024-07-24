@@ -3134,7 +3134,7 @@ const vocabularyData: VocabularyItem[] = [
   {
     id: 237,
     arabic: "لوحة",
-    english: ["picture"],
+    english: ["frame"],
     categories: ["Nouns", "Art"],
     type: "noun",
     forms: {
