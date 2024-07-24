@@ -116,7 +116,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
             </span>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* <div className="flex flex-wrap gap-2 mb-4">
           {item.categories.map((category, index) => (
             <span
               key={index}
@@ -125,7 +125,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
               {category}
             </span>
           ))}
-        </div>
+        </div> */}
         {item.type === "verb" && item.conjugations && (
           <div>
             <div className="flex mb-2">
