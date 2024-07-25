@@ -4,9 +4,9 @@ import vocabularyData, {
   VerbConjugations,
 } from "./data/vocabularyData";
 
-const allCategories: string[] = [
-  ...new Set(vocabularyData.flatMap((item) => item.categories)),
-];
+// const allCategories: string[] = [
+//   ...new Set(vocabularyData.flatMap((item) => item.categories)),
+// ];
 
 const pronouns: Record<string, string> = {
   I: "أنا",
@@ -116,7 +116,8 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
             </span>
           ))}
         </div>
-        {/* <div className="flex flex-wrap gap-2 mb-4">
+        {/* Commented out category display
+        <div className="flex flex-wrap gap-2 mb-4">
           {item.categories.map((category, index) => (
             <span
               key={index}
@@ -125,7 +126,8 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
               {category}
             </span>
           ))}
-        </div> */}
+        </div>
+        */}
         {item.type === "verb" && item.conjugations && (
           <div>
             <div className="flex mb-2">
@@ -193,7 +195,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
 
 const ArabicVocabularyDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory] = useState<string>("");
   const [starredItems, setStarredItems] = useState<number[]>([]);
   const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
 
@@ -236,6 +238,7 @@ const ArabicVocabularyDashboard: React.FC = () => {
             🔍
           </span>
         </div>
+        {/* Commented out category dropdown
         <div className="relative">
           <select
             value={selectedCategory}
@@ -253,6 +256,7 @@ const ArabicVocabularyDashboard: React.FC = () => {
             📁
           </span>
         </div>
+        */}
         <button
           onClick={() => setShowStarredOnly(!showStarredOnly)}
           className={`px-4 py-2 rounded-md flex items-center gap-2 ${
@@ -279,4 +283,3 @@ const ArabicVocabularyDashboard: React.FC = () => {
 };
 
 export default ArabicVocabularyDashboard;
-
