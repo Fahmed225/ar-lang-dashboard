@@ -3,10 +3,11 @@ import vocabularyData, {
   VocabularyItem,
   VerbConjugations,
 } from "./data/vocabularyData";
+import { Volume2 } from "lucide-react";
+import { ElevenLabsClient } from "elevenlabs";
+const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+import { createWriteStream } from 'fs';
 
-// const allCategories: string[] = [
-//   ...new Set(vocabularyData.flatMap((item) => item.categories)),
-// ];
 
 const pronouns: Record<string, string> = {
   I: "أنا",
@@ -66,6 +67,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
   isStarred,
 }) => {
   const [activeTab, setActiveTab] = useState<"present" | "past">("present");
+  const [audioCache, setAudioCache] = useState<Record<string, string>>({});
 
   const handleReportIssue = () => {
     const subject = encodeURIComponent(`Issue Report: ${item.arabic}`);
@@ -77,7 +79,46 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
     window.location.href = `mailto:fadbz08@gmail.com?subject=${subject}&body=${body}`;
   };
 
-  return (
+  const handlePlayAudio = async () => {
+    if (audioCache[item.arabic]) {
+      const audioElement = new Audio(audioCache[item.arabic]);
+      audioElement.play();
+      return;
+    }
+  
+    const client = new ElevenLabsClient({
+      apiKey: apiKey,
+    });
+  
+    try {
+      const audioBuffer = await client.generate({
+        voice: "Rachel",
+        model_id: "eleven_turbo_v2",
+        text: item.arabic,
+      });
+  
+      const fileName = `${item.id}.mp3`;
+      const fileStream = createWriteStream(fileName);
+  
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      setAudioCache((prevCache) => ({ ...prevCache, [item.arabic]: audioUrl }));
+  
+      const audioElement = new Audio(audioUrl);
+      audioElement.play();
+  
+      audioBlob.stream().pipe(fileStream);
+      fileStream.on("finish", () => {
+        console.log(`Audio saved as ${fileName}`);
+      });
+      fileStream.on("error", (error) => {
+        console.error("Error saving audio:", error);
+      });
+    } catch (error) {
+      console.error("Error generating audio:", error);
+    }
+  };
+    return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
       <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-900 p-4">
         <h3 className="font-bold text-2xl text-blue-600 dark:text-blue-400">
@@ -100,6 +141,12 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
           >
             ★
           </button>
+          <button
+            onClick={handlePlayAudio}
+            className="ml-2 p-1 rounded-full text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+          >
+            <Volume2 />
+          </button>
         </div>
       </div>
       <div className="p-4">
@@ -116,18 +163,6 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
             </span>
           ))}
         </div>
-        {/* Commented out category display
-        <div className="flex flex-wrap gap-2 mb-4">
-          {item.categories.map((category, index) => (
-            <span
-              key={index}
-              className="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300 text-xs rounded-full"
-            >
-              {category}
-            </span>
-          ))}
-        </div>
-        */}
         {item.type === "verb" && item.conjugations && (
           <div>
             <div className="flex mb-2">
@@ -238,25 +273,6 @@ const ArabicVocabularyDashboard: React.FC = () => {
             🔍
           </span>
         </div>
-        {/* Commented out category dropdown
-        <div className="relative">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="pl-10 pr-4 py-2 border rounded-md appearance-none bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
-          >
-            <option value="">All Categories</option>
-            {allCategories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
-            📁
-          </span>
-        </div>
-        */}
         <button
           onClick={() => setShowStarredOnly(!showStarredOnly)}
           className={`px-4 py-2 rounded-md flex items-center gap-2 ${
