@@ -1,13 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import vocabularyData, {
   VocabularyItem,
   VerbConjugations,
 } from "./data/vocabularyData";
 import { Volume2 } from "lucide-react";
 import { ElevenLabsClient } from "elevenlabs";
-const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-import { createWriteStream } from 'fs';
-
+const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY || "";
 
 const pronouns: Record<string, string> = {
   I: "أنا",
@@ -59,17 +57,23 @@ interface VocabularyCardProps {
   item: VocabularyItem;
   onStarToggle: (id: number) => void;
   isStarred: boolean;
+  audioCache: Record<string, string>;
+  setAudioCache: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  elevenLabsClient: ElevenLabsClient;
 }
 
 const VocabularyCard: React.FC<VocabularyCardProps> = ({
   item,
   onStarToggle,
   isStarred,
+  audioCache,
+  setAudioCache,
+  elevenLabsClient,
 }) => {
   const [activeTab, setActiveTab] = useState<"present" | "past">("present");
-  const [audioCache, setAudioCache] = useState<Record<string, string>>({});
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const handleReportIssue = () => {
+  const handleReportIssue = useCallback(() => {
     const subject = encodeURIComponent(`Issue Report: ${item.arabic}`);
     const body = encodeURIComponent(
       `I'd like to report an issue with the following vocabulary item:\n\nArabic: ${
@@ -77,48 +81,53 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
       }\nEnglish: ${item.english.join(", ")}\n\nPlease describe the issue:`
     );
     window.location.href = `mailto:fadbz08@gmail.com?subject=${subject}&body=${body}`;
-  };
+  }, [item]);
 
-  const handlePlayAudio = async () => {
-    if (audioCache[item.arabic]) {
-      const audioElement = new Audio(audioCache[item.arabic]);
-      audioElement.play();
-      return;
-    }
-  
-    const client = new ElevenLabsClient({
-      apiKey: apiKey,
-    });
-  
+  const handlePlayAudio = useCallback(async () => {
+    if (isPlaying) return;
+
+    setIsPlaying(true);
+
     try {
-      const audioBuffer = await client.generate({
-        voice: "Rachel",
-        model_id: "eleven_turbo_v2",
-        text: item.arabic,
-      });
-  
-      const fileName = `${item.id}.mp3`;
-      const fileStream = createWriteStream(fileName);
-  
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setAudioCache((prevCache) => ({ ...prevCache, [item.arabic]: audioUrl }));
-  
-      const audioElement = new Audio(audioUrl);
-      audioElement.play();
-  
-      audioBlob.stream().pipe(fileStream);
-      fileStream.on("finish", () => {
-        console.log(`Audio saved as ${fileName}`);
-      });
-      fileStream.on("error", (error) => {
-        console.error("Error saving audio:", error);
-      });
+      let audioSrc: string;
+
+      if (audioCache[item.arabic]) {
+        audioSrc = audioCache[item.arabic];
+      } else {
+        const response = await elevenLabsClient.generate({
+          voice: "Charlotte",
+          model_id: "eleven_multilingual_v2",
+          text: item.arabic,
+        });
+
+        if (!(response instanceof ReadableStream)) {
+          throw new Error("Expected a ReadableStream from ElevenLabs API");
+        }
+
+        const reader = response.getReader();
+        const chunks: Uint8Array[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+
+        const blob = new Blob(chunks, { type: "audio/mpeg" });
+        audioSrc = URL.createObjectURL(blob);
+        setAudioCache((prev) => ({ ...prev, [item.arabic]: audioSrc }));
+      }
+
+      const audio = new Audio(audioSrc);
+      audio.onended = () => setIsPlaying(false);
+      await audio.play();
     } catch (error) {
-      console.error("Error generating audio:", error);
+      console.error("Error playing audio:", error);
+      setIsPlaying(false);
     }
-  };
-    return (
+  }, [item.arabic, audioCache, elevenLabsClient, isPlaying, setAudioCache]);
+
+  return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
       <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-900 p-4">
         <h3 className="font-bold text-2xl text-blue-600 dark:text-blue-400">
@@ -143,7 +152,12 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
           </button>
           <button
             onClick={handlePlayAudio}
-            className="ml-2 p-1 rounded-full text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+            disabled={isPlaying}
+            className={`ml-2 p-1 rounded-full ${
+              isPlaying
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+            }`}
           >
             <Volume2 />
           </button>
@@ -233,6 +247,12 @@ const ArabicVocabularyDashboard: React.FC = () => {
   const [selectedCategory] = useState<string>("");
   const [starredItems, setStarredItems] = useState<number[]>([]);
   const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
+  const [audioCache, setAudioCache] = useState<Record<string, string>>({});
+
+  const elevenLabsClient = useMemo(
+    () => new ElevenLabsClient({ apiKey }),
+    [apiKey]
+  );
 
   const filteredVocabulary = useMemo(() => {
     return vocabularyData.filter(
@@ -291,6 +311,9 @@ const ArabicVocabularyDashboard: React.FC = () => {
             item={item}
             onStarToggle={handleStarToggle}
             isStarred={starredItems.includes(item.id)}
+            audioCache={audioCache}
+            setAudioCache={setAudioCache}
+            elevenLabsClient={elevenLabsClient}
           />
         ))}
       </div>
