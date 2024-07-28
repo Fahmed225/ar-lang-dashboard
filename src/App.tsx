@@ -1,12 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import vocabularyData, {
   VocabularyItem,
   VerbConjugations,
 } from "./data/vocabularyData";
-
-// const allCategories: string[] = [
-//   ...new Set(vocabularyData.flatMap((item) => item.categories)),
-// ];
+import { Volume2 } from "lucide-react";
+import { ElevenLabsClient } from "elevenlabs";
+const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY || "";
 
 const pronouns: Record<string, string> = {
   I: "أنا",
@@ -58,16 +57,23 @@ interface VocabularyCardProps {
   item: VocabularyItem;
   onStarToggle: (id: number) => void;
   isStarred: boolean;
+  audioCache: Record<string, string>;
+  setAudioCache: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  elevenLabsClient: ElevenLabsClient;
 }
 
 const VocabularyCard: React.FC<VocabularyCardProps> = ({
   item,
   onStarToggle,
   isStarred,
+  audioCache,
+  setAudioCache,
+  elevenLabsClient,
 }) => {
   const [activeTab, setActiveTab] = useState<"present" | "past">("present");
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const handleReportIssue = () => {
+  const handleReportIssue = useCallback(() => {
     const subject = encodeURIComponent(`Issue Report: ${item.arabic}`);
     const body = encodeURIComponent(
       `I'd like to report an issue with the following vocabulary item:\n\nArabic: ${
@@ -75,7 +81,51 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
       }\nEnglish: ${item.english.join(", ")}\n\nPlease describe the issue:`
     );
     window.location.href = `mailto:fadbz08@gmail.com?subject=${subject}&body=${body}`;
-  };
+  }, [item]);
+
+  const handlePlayAudio = useCallback(async () => {
+    if (isPlaying) return;
+
+    setIsPlaying(true);
+
+    try {
+      let audioSrc: string;
+
+      if (audioCache[item.arabic]) {
+        audioSrc = audioCache[item.arabic];
+      } else {
+        const response = await elevenLabsClient.generate({
+          voice: "Charlotte",
+          model_id: "eleven_multilingual_v2",
+          text: item.arabic,
+        });
+
+        if (!(response instanceof ReadableStream)) {
+          throw new Error("Expected a ReadableStream from ElevenLabs API");
+        }
+
+        const reader = response.getReader();
+        const chunks: Uint8Array[] = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+
+        const blob = new Blob(chunks, { type: "audio/mpeg" });
+        audioSrc = URL.createObjectURL(blob);
+        setAudioCache((prev) => ({ ...prev, [item.arabic]: audioSrc }));
+      }
+
+      const audio = new Audio(audioSrc);
+      audio.onended = () => setIsPlaying(false);
+      await audio.play();
+    } catch (error) {
+      console.error("Error playing audio:", error);
+      setIsPlaying(false);
+    }
+  }, [item.arabic, audioCache, elevenLabsClient, isPlaying, setAudioCache]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
@@ -100,6 +150,17 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
           >
             ★
           </button>
+          <button
+            onClick={handlePlayAudio}
+            disabled={isPlaying}
+            className={`ml-2 p-1 rounded-full ${
+              isPlaying
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+            }`}
+          >
+            <Volume2 />
+          </button>
         </div>
       </div>
       <div className="p-4">
@@ -116,18 +177,6 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
             </span>
           ))}
         </div>
-        {/* Commented out category display
-        <div className="flex flex-wrap gap-2 mb-4">
-          {item.categories.map((category, index) => (
-            <span
-              key={index}
-              className="px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300 text-xs rounded-full"
-            >
-              {category}
-            </span>
-          ))}
-        </div>
-        */}
         {item.type === "verb" && item.conjugations && (
           <div>
             <div className="flex mb-2">
@@ -198,6 +247,12 @@ const ArabicVocabularyDashboard: React.FC = () => {
   const [selectedCategory] = useState<string>("");
   const [starredItems, setStarredItems] = useState<number[]>([]);
   const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
+  const [audioCache, setAudioCache] = useState<Record<string, string>>({});
+
+  const elevenLabsClient = useMemo(
+    () => new ElevenLabsClient({ apiKey }),
+    [apiKey]
+  );
 
   const filteredVocabulary = useMemo(() => {
     return vocabularyData.filter(
@@ -238,25 +293,6 @@ const ArabicVocabularyDashboard: React.FC = () => {
             🔍
           </span>
         </div>
-        {/* Commented out category dropdown
-        <div className="relative">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="pl-10 pr-4 py-2 border rounded-md appearance-none bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
-          >
-            <option value="">All Categories</option>
-            {allCategories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
-            📁
-          </span>
-        </div>
-        */}
         <button
           onClick={() => setShowStarredOnly(!showStarredOnly)}
           className={`px-4 py-2 rounded-md flex items-center gap-2 ${
@@ -275,6 +311,9 @@ const ArabicVocabularyDashboard: React.FC = () => {
             item={item}
             onStarToggle={handleStarToggle}
             isStarred={starredItems.includes(item.id)}
+            audioCache={audioCache}
+            setAudioCache={setAudioCache}
+            elevenLabsClient={elevenLabsClient}
           />
         ))}
       </div>
