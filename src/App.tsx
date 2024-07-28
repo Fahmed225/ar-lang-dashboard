@@ -1,12 +1,9 @@
-import { useState, useMemo } from "react";
-import vocabularyData, {
-  VocabularyItem,
-  VerbConjugations,
-} from "./data/vocabularyData";
+import { useState, useMemo, useEffect } from "react";
+import { getVocabularyData, VocabularyItem, VerbConjugations } from "./db";
 
-// const allCategories: string[] = [
-//   ...new Set(vocabularyData.flatMap((item) => item.categories)),
-// ];
+const allCategories: string[] = [
+  ...new Set(vocabularyData.flatMap((item) => item.categories)),
+];
 
 const pronouns: Record<string, string> = {
   I: "أنا",
@@ -116,8 +113,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
             </span>
           ))}
         </div>
-        {/* Commented out category display
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* <div className="flex flex-wrap gap-2 mb-4">
           {item.categories.map((category, index) => (
             <span
               key={index}
@@ -126,8 +122,7 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
               {category}
             </span>
           ))}
-        </div>
-        */}
+        </div> */}
         {item.type === "verb" && item.conjugations && (
           <div>
             <div className="flex mb-2">
@@ -195,9 +190,18 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
 
 const ArabicVocabularyDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [starredItems, setStarredItems] = useState<number[]>([]);
   const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
+  const [vocabularyData, setVocabularyData] = useState<VocabularyItem[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await getVocabularyData();
+      setVocabularyData(data);
+    };
+    fetchData();
+  }, []);
 
   const filteredVocabulary = useMemo(() => {
     return vocabularyData.filter(
@@ -210,7 +214,7 @@ const ArabicVocabularyDashboard: React.FC = () => {
           item.categories.includes(selectedCategory)) &&
         (!showStarredOnly || starredItems.includes(item.id))
     );
-  }, [searchTerm, selectedCategory, starredItems, showStarredOnly]);
+  }, [searchTerm, selectedCategory, starredItems, showStarredOnly, vocabularyData]);
 
   const handleStarToggle = (itemId: number) => {
     setStarredItems((prev) =>
@@ -238,7 +242,6 @@ const ArabicVocabularyDashboard: React.FC = () => {
             🔍
           </span>
         </div>
-        {/* Commented out category dropdown
         <div className="relative">
           <select
             value={selectedCategory}
@@ -256,7 +259,6 @@ const ArabicVocabularyDashboard: React.FC = () => {
             📁
           </span>
         </div>
-        */}
         <button
           onClick={() => setShowStarredOnly(!showStarredOnly)}
           className={`px-4 py-2 rounded-md flex items-center gap-2 ${
