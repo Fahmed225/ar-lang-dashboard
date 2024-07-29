@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
+import { VocabularyItem } from "./data/vocabularyData";
 
-const db = new Database('vocabulary.db', { verbose: console.log });
+const db = new Database("vocabulary.db", { verbose: console.log });
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS vocabulary (
@@ -14,10 +15,10 @@ db.exec(`
   )
 `);
 
-export function getVocabularyData() {
-  const stmt = db.prepare('SELECT * FROM vocabulary');
+export function getVocabularyData(): VocabularyItem[] {
+  const stmt = db.prepare("SELECT * FROM vocabulary");
   const rows = stmt.all();
-  return rows.map(row => ({
+  return rows.map((row) => ({
     ...row,
     english: JSON.parse(row.english),
     categories: JSON.parse(row.categories),
