@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import vocabularyData, {
   VocabularyItem,
   VerbConjugations,
@@ -248,6 +248,10 @@ const ArabicVocabularyDashboard: React.FC = () => {
   const [starredItems, setStarredItems] = useState<number[]>([]);
   const [showStarredOnly, setShowStarredOnly] = useState<boolean>(false);
   const [audioCache, setAudioCache] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    alert("If this was beneficial, please make dua for me. -Fahad");
+  }, []);
 
   const elevenLabsClient = useMemo(
     () => new ElevenLabsClient({ apiKey }),
