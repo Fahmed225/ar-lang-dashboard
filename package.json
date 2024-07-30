@@ -15,11 +15,11 @@
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.0",
+    "better-sqlite3": "^8.0.0",
     "elevenlabs": "^0.11.0",
     "lucide-react": "^0.414.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "better-sqlite3": "^8.0.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
@@ -35,8 +35,8 @@
     "gh-pages": "^6.1.1",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
-    "vite": "^5.3.4",
-    "ts-node": "^10.9.1"
+    "vite": "^5.3.4"
   }
 }
